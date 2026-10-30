@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>برنامه‌ریز سفر کاری</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --priority-high: #ef4444;
+            --priority-med: #f59e0b;
+            --priority-low: #22c55e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            color: white;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        header h1 { font-size: 1.4rem; font-weight: 700; }
+        header p { font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; }
+        .datetime-meta {
+            font-weight: 600;
+            color: var(--primary);
+            background: #eff6ff;
+        }
+        .container { max-width: 600px; margin: 0 auto; padding: 1rem; }
+        .add-btn {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 14px 0 rgb(37 99 235 / 0.4);
+            z-index: 1000;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .add-btn:active { transform: translateX(-50%) scale(0.95); }
+        .add-btn:hover { background: var(--primary-dark); }
+        .task-list { list-style: none; }
+        .task-item {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+            border-right: 4px solid var(--primary);
+            transition: all 0.2s;
+            position: relative;
+        }
+        .task-item.done {
+            opacity: 0.65;
+            border-right-color: var(--success);
+            background: #f0fdf4;
+        }
+        .task-item.done .task-title { text-decoration: line-through; color: var(--muted); }
+        .task-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: var(--success);
+            flex-shrink: 0;
+        }
+        .task-content { flex: 1; min-width: 0; }
+        .task-title {
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 0.35rem;
+            word-break: break-word;
+        }
+        .task-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-top: 0.5rem;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: #f1f5f9;
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .meta-item:hover { background: #e2e8f0; }
+        .priority {
+            font-weight: 700;
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+        .priority-5, .priority-4 { background: #fee2e2; color: #b91c1c; }
+        .priority-3 { background: #fef3c7; color: #92400e; }
+        .priority-2, .priority-1 { background: #dcfce7; color: #166534; }
+        .actions {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            display: flex;
+            gap: 0.4rem;
+        }
+        .action-btn {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0.2rem;
+            border-radius: 6px;
+            opacity: 0.6;
+        }
+        .action-btn:hover { opacity: 1; background: #f1f5f9; }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 20px 20px 0 0;
+            padding: 1.5rem 1.25rem 2rem;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .modal h2 { margin-bottom: 1rem; font-size: 1.25rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+        }
+        .priority-selector {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: space-between;
+        }
+        .priority-option {
+            flex: 1;
+            text-align: center;
+            padding: 0.6rem 0.3rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .priority-option.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+            color: var(--primary);
+        }
+        .btn-row {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+        .btn {
+            flex: 1;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: #e2e8f0; color: var(--text); }
+        .btn-danger { background: var(--danger); color: white; }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--muted);
+        }
+        .empty-state .emoji { font-size: 3rem; margin-bottom: 0.5rem; }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: white;
+            margin: 1rem 0;
+            padding: 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            box-shadow: 0 1px 3px rgb(0 0 0 / 0.05);
+        }
+        .stat { text-align: center; }
+        .stat-num { font-weight: 700; font-size: 1.1rem; color: var(--primary); }
+        @media (min-width: 640px) {
+            .modal { align-items: center; }
+            .modal-content { border-radius: 20px; max-height: 80vh; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>✈️ برنامه‌ریز سفر کاری</h1>
+        <p>کارها، تاریخ و زمان، اولویت، لوکیشن و تماس‌ها</p>
+    </header>
+
+    <div class="container">
+        <div class="stats" id="stats">
+            <div class="stat"><div class="stat-num" id="totalCount">0</div><div>کل کارها</div></div>
+            <div class="stat"><div class="stat-num" id="doneCount">0</div><div>انجام شده</div></div>
+            <div class="stat"><div class="stat-num" id="pendingCount">0</div><div>باقی‌مانده</div></div>
+        </div>
+        <ul class="task-list" id="taskList"></ul>
+        <div class="empty-state" id="emptyState">
+            <div class="emoji">📋</div>
+            <p>هنوز کاری اضافه نکرده‌اید</p>
+            <p style="font-size:0.85rem; margin-top:0.5rem;">دکمه + را بزنید تا اولین کار را اضافه کنید</p>
+        </div>
+    </div>
+
+    <button class="add-btn" id="addBtn" title="افزودن کار جدید">+</button>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">افزودن کار جدید</h2>
+            <form id="taskForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="title">عنوان کار *</label>
+                    <input type="text" id="title" required placeholder="مثلاً: جلسه با مشتری ساعت ۱۰">
+                </div>
+                <div class="form-group">
+                    <label for="dateText">تاریخ شمسی</label>
+                    <input type="text" id="dateText" placeholder="مثلاً: ۱۴۰۵/۰۸/۰۸ یا ۸ آبان ۱۴۰۵">
+                    <small style="color: #64748b; font-size: 0.8rem;">تاریخ را به صورت شمسی وارد کنید</small>
+                </div>
+                <div class="form-group">
+                    <label for="timeText">ساعت</label>
+                    <input type="text" id="timeText" placeholder="مثلاً: ۱۴:۳۰ یا ساعت ۱۰ صبح" dir="ltr" style="text-align: left;">
+                </div>
+                <div class="form-group">
+                    <label>اولویت (امتیاز)</label>
+                    <div class="priority-selector" id="prioritySelector">
+                        <div class="priority-option" data-value="1">۱<br><small>کم</small></div>
+                        <div class="priority-option" data-value="2">۲</div>
+                        <div class="priority-option selected" data-value="3">۳<br><small>متوسط</small></div>
+                        <div class="priority-option" data-value="4">۴</div>
+                        <div class="priority-option" data-value="5">۵<br><small>فوری</small></div>
+                    </div>
+                    <input type="hidden" id="priority" value="3">
+                </div>
+                <div class="form-group">
+                    <label for="location">لوکیشن / آدرس</label>
+                    <input type="text" id="location" placeholder="مثلاً: دفتر مشتری در خیابان ولیعصر">
+                </div>
+                <div class="form-group">
+                    <label for="phone">شماره تماس</label>
+                    <input type="tel" id="phone" placeholder="مثلاً: ۰۹۱۲۱۲۳۴۵۶۷" dir="ltr" style="text-align: left;">
+                </div>
+                <div class="btn-row">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">انصراف</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">ذخیره</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'businessTripTasks_v2';
+        let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        const taskListEl = document.getElementById('taskList');
+        const emptyStateEl = document.getElementById('emptyState');
+        const modal = document.getElementById('modal');
+        const form = document.getElementById('taskForm');
+        const addBtn = document.getElementById('addBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const prioritySelector = document.getElementById('prioritySelector');
+        const priorityInput = document.getElementById('priority');
+
+        function save() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            render();
+        }
+
+        function formatDateTime(task) {
+            const parts = [];
+            if (task.dateText) parts.push('📅 ' + task.dateText);
+            if (task.timeText) parts.push('🕐 ' + task.timeText);
+            return parts.join('  ');
+        }
+
+        function render() {
+            // Sort: undone first, then by priority desc (manual date/time is free text, so not auto-sorted by time)
+            const sorted = [...tasks].sort((a, b) => {
+                if (a.done !== b.done) return a.done ? 1 : -1;
+                return b.priority - a.priority;
+            });
+
+            taskListEl.innerHTML = '';
+            if (sorted.length === 0) {
+                emptyStateEl.style.display = 'block';
+            } else {
+                emptyStateEl.style.display = 'none';
+                sorted.forEach(task => {
+                    const li = document.createElement('li');
+                    li.className = 'task-item' + (task.done ? ' done' : '');
+                    const dtDisplay = formatDateTime(task);
+                    li.innerHTML = `
+                        <div class="actions">
+                            <button class="action-btn edit" data-id="${task.id}" title="ویرایش">✏️</button>
+                            <button class="action-btn delete" data-id="${task.id}" title="حذف">🗑️</button>
+                        </div>
+                        <div class="task-header">
+                            <input type="checkbox" class="checkbox" data-id="${task.id}" ${task.done ? 'checked' : ''}>
+                            <div class="task-content">
+                                <div class="task-title">${escapeHtml(task.title)}</div>
+                                <div class="task-meta">
+                                    ${dtDisplay ? `<span class="meta-item datetime-meta">${escapeHtml(dtDisplay)}</span>` : ''}
+                                    <span class="priority priority-${task.priority}">اولویت ${task.priority}</span>
+                                    ${task.location ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.location)}" target="_blank" class="meta-item" title="باز کردن در نقشه">📍 ${escapeHtml(task.location)}</a>` : ''}
+                                    ${task.phone ? `<a href="tel:${task.phone.replace(/[^0-9+]/g,'')}" class="meta-item" title="تماس">📞 ${escapeHtml(task.phone)}</a>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    taskListEl.appendChild(li);
+                });
+            }
+            updateStats();
+        }
+
+        function updateStats() {
+            const total = tasks.length;
+            const done = tasks.filter(t => t.done).length;
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('doneCount').textContent = done;
+            document.getElementById('pendingCount').textContent = total - done;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, m => ({
+                '&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;'
+            }[m]));
+        }
+
+        function openModal(task = null) {
+            form.reset();
+            document.getElementById('editId').value = '';
+            priorityInput.value = '3';
+            document.querySelectorAll('.priority-option').forEach(el => el.classList.remove('selected'));
+            document.querySelector('.priority-option[data-value="3"]').classList.add('selected');
+            document.getElementById('modalTitle').textContent = 'افزودن کار جدید';
+
+            if (task) {
+                document.getElementById('editId').value = task.id;
+                document.getElementById('title').value = task.title;
+                document.getElementById('dateText').value = task.dateText || '';
+                document.getElementById('timeText').value = task.timeText || '';
+                document.getElementById('location').value = task.location || '';
+                document.getElementById('phone').value = task.phone || '';
+                priorityInput.value = task.priority;
+                document.querySelectorAll('.priority-option').forEach(el => el.classList.remove('selected'));
+                document.querySelector(`.priority-option[data-value="${task.priority}"]`).classList.add('selected');
+                document.getElementById('modalTitle').textContent = 'ویرایش کار';
+            }
+            modal.classList.add('active');
+            setTimeout(() => document.getElementById('title').focus(), 100);
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        // Priority selector
+        prioritySelector.addEventListener('click', e => {
+            const opt = e.target.closest('.priority-option');
+            if (!opt) return;
+            document.querySelectorAll('.priority-option').forEach(el => el.classList.remove('selected'));
+            opt.classList.add('selected');
+            priorityInput.value = opt.dataset.value;
+        });
+
+        addBtn.addEventListener('click', () => openModal());
+        cancelBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const title = document.getElementById('title').value.trim();
+            const priority = parseInt(priorityInput.value);
+            const location = document.getElementById('location').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const dateText = document.getElementById('dateText').value.trim();
+            const timeText = document.getElementById('timeText').value.trim();
+
+            if (!title) return;
+
+            if (id) {
+                // Edit
+                const task = tasks.find(t => t.id === id);
+                if (task) {
+                    task.title = title;
+                    task.priority = priority;
+                    task.location = location;
+                    task.phone = phone;
+                    task.dateText = dateText;
+                    task.timeText = timeText;
+                }
+            } else {
+                // Add
+                tasks.push({
+                    id: Date.now().toString(),
+                    title,
+                    priority,
+                    location,
+                    phone,
+                    dateText,
+                    timeText,
+                    done: false,
+                    createdAt: Date.now()
+                });
+            }
+            save();
+            closeModal();
+        });
+
+        taskListEl.addEventListener('click', e => {
+            const id = e.target.dataset.id;
+            if (!id) return;
+
+            if (e.target.classList.contains('checkbox')) {
+                const task = tasks.find(t => t.id === id);
+                if (task) {
+                    task.done = e.target.checked;
+                    save();
+                }
+            } else if (e.target.classList.contains('delete')) {
+                if (confirm('آیا از حذف این کار مطمئن هستید؟')) {
+                    tasks = tasks.filter(t => t.id !== id);
+                    save();
+                }
+            } else if (e.target.classList.contains('edit')) {
+                const task = tasks.find(t => t.id === id);
+                if (task) openModal(task);
+            }
+        });
+
+        // Initial render
+        render();
+
+        // Sample data if empty (optional - remove if not wanted)
+        if (tasks.length === 0 && !localStorage.getItem('sampleShown')) {
+            // Uncomment next lines if you want sample tasks on first open
+            /*
+            tasks = [
+                { id: '1', title: 'رزرو هتل نزدیک محل جلسه', priority: 5, location: 'هتل اسپیناس، تهران', phone: '02188888888', done: false },
+                { id: '2', title: 'آماده‌سازی ارائه برای مشتری', priority: 4, location: '', phone: '', done: false },
+                { id: '3', title: 'تماس با راننده تاکسی', priority: 3, location: 'فرودگاه امام خمینی', phone: '09121234567', done: true }
+            ];
+            save();
+            */
+            localStorage.setItem('sampleShown', '1');
+        }
+    </script>
+</body>
+</html>
